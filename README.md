@@ -17,7 +17,7 @@ nano ~/.bashrc
 
 ```bash
 # 将 sm 命令绑定到 ~/sm.sh 脚本
-alias sm=~/sm.sh
+alias sm='bash ~/sm.sh'
 ```
 
 ### 3. 重新加载配置
