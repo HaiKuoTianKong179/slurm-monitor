@@ -21,6 +21,19 @@ def short_name(name: str) -> str:
     return name.split(":", 1)[-1]
 
 
+def job_display_id(j: dict) -> str:
+    """作业显示 ID：数组任务显示为 '数组ID_任务号'（如 10592_6），普通作业显示 job_id。
+
+    注意：本集群 scontrol --json 的数组信息在顶层 array_job_id/array_task_id 字段，
+    不在 array 对象里（array 恒为 {}）。
+    """
+    ajid = (j.get("array_job_id") or {}).get("number", 0)
+    atid = (j.get("array_task_id") or {}).get("number", 0)
+    if ajid and atid:
+        return f"{ajid}_{atid}"
+    return str(j.get("job_id"))
+
+
 def parse_gres(s: str) -> dict:
     """'gpu:edition:4(S:0-1),...' -> {'gpu:edition': 4, ...}"""
     out = {}
@@ -85,7 +98,7 @@ def job_groups(jobs: list) -> dict:
         gres = (parse_gres(",".join(j.get("gres_detail") or [])) if st == "RUNNING"
                 else parse_gpu_req(j.get("tres_per_node", "")))
         remain = fmt_dur(j.get("end_time", {}).get("number", 0) - now) if st == "RUNNING" else ""
-        base = (j.get("job_id"), st[0], j.get("user_name") or "",
+        base = (job_display_id(j), st[0], j.get("user_name") or "",
                 j.get("name") or "", remain)
         counts = {("gpu(通配)" if short_name(k) == "gpu" else short_name(k)): v
                   for k, v in gres.items() if v > 0}
