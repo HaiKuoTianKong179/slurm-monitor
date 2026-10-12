@@ -88,7 +88,7 @@ def node_resources(nodes: list) -> dict:
 
 
 def job_groups(jobs: list) -> dict:
-    """按 GPU 型号分组活跃作业 -> {型号: [(id, 状态, 用户, 名称, 剩余, 数量)]}"""
+    """按 GPU 型号分组活跃作业 -> {型号: [(id, 状态, 用户, 名称, 剩余, 数量, 依赖)]}"""
     groups = {}
     now = int(time.time())
     for j in jobs:
@@ -103,20 +103,27 @@ def job_groups(jobs: list) -> dict:
         counts = {("gpu(通配)" if short_name(k) == "gpu" else short_name(k)): v
                   for k, v in gres.items() if v > 0}
         for g, cnt in (counts.items() or [("无 GPU", 0)]):
-            groups.setdefault(g, []).append(base + (cnt,))
+            groups.setdefault(g, []).append(base + (cnt, j.get("dependency") or "-",))
     return groups
 
 
 def print_queues(groups: dict) -> None:
-    print("作业申请（张数=该型号显卡数, 末列剩余时间）:")
+    print("作业申请（张数=该型号显卡数, 末列：运行中显示剩余时间，等待中显示依赖）:")
     if not groups:
         print("  (无)")
         return
+    rows = [row for infos in groups.values() for row in infos]
+    jid_width = max(len(row[0]) for row in rows)
+    user_width = max(len(row[2]) for row in rows)
+    name_width = max(len(row[3]) for row in rows)
+    count_width = max(len(str(row[5])) if row[5] else 1 for row in rows)
     for g, infos in groups.items():
         print(f"  [{g}]")
-        for jid, st, user, name, remain, cnt in infos:
-            print(f"    {jid:<7} {st}  {user:<12} {name:<16} "
-                  f"{('-' if not cnt else cnt):>3}张 {remain:>12}")
+        for jid, st, user, name, remain, cnt, dependency in infos:
+            status_info = remain if st == "R" else dependency
+            count = str(cnt) if cnt else "-"
+            print(f"    {jid:<{jid_width}}  {st}  {user:<{user_width}}  "
+                  f"{name:<{name_width}}  {count:>{count_width}}张  {status_info}")
 
 
 def print_resources(res: dict) -> None:
