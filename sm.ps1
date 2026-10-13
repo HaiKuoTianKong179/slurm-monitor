@@ -1,6 +1,6 @@
 function global:sm {
     param(
-        [string[]]$Hosts = @('A100-80G', 'ZeroTier-PRO6000'),
+        [string[]]$Hosts = @('A100-80G', 'PRO6000'),
         [ValidateRange(5, 600)]
         [int]$TimeoutSeconds = 60,
         [switch]$AsObject
