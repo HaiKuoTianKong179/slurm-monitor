@@ -19,8 +19,8 @@ function global:sm {
                 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
                 $OutputEncoding = [Console]::OutputEncoding
                 $started = Get-Date
-                # Interactive bash loads aliases/functions such as sm from .bashrc.
-                $raw = & $sshPath -T -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=10 -o ServerAliveCountMax=2 $machine 'bash -ic sm' 2>&1
+                # Run the status script directly to avoid interactive Bash startup overhead.
+                $raw = & $sshPath -T -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=10 -o ServerAliveCountMax=2 $machine 'python3 ~/gpu_status.py' 2>&1
                 $code = $LASTEXITCODE
                 $lines = @($raw | ForEach-Object { $_.ToString() } | Where-Object {
                     $_ -notmatch '^bash: (cannot set terminal process group|no job control in this shell)'
