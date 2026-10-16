@@ -22,14 +22,11 @@ function global:sm {
                 # Run the status script directly to avoid interactive Bash startup overhead.
                 $raw = & $sshPath -T -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=10 -o ServerAliveCountMax=2 $machine 'python3 ~/gpu_status.py' 2>&1
                 $code = $LASTEXITCODE
-                $lines = @($raw | ForEach-Object { $_.ToString() } | Where-Object {
-                    $_ -notmatch '^bash: (cannot set terminal process group|no job control in this shell)'
-                })
                 [pscustomobject]@{
                     HostName = $machine
                     ExitCode = $code
                     Seconds = [math]::Round(((Get-Date) - $started).TotalSeconds, 1)
-                    Output = ($lines -join [Environment]::NewLine)
+                    Output = ($raw -join [Environment]::NewLine)
                 }
             }
         }
