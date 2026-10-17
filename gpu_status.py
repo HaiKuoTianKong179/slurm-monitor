@@ -69,6 +69,26 @@ def fmt_dur(sec: int) -> str:
     return f"{d}-{h:02d}:{m:02d}:{s:02d}" if d else f"{h:02d}:{m:02d}:{s:02d}"
 
 
+def fmt_start_wait(start_time: dict, now: int) -> str:
+    """Slurm 已知预计时间 -> 距预计启动的时长；未知时返回空字符串。"""
+    if not isinstance(start_time, dict):
+        return ""
+    if not start_time.get("set", True) or start_time.get("infinite", False):
+        return ""
+    number = start_time.get("number", 0)
+    if isinstance(number, bool) or not isinstance(number, (int, float)):
+        return ""
+    try:
+        seconds = int(number) - now
+        if number <= 0:
+            return ""
+    except (ValueError, OverflowError):
+        return ""
+    if seconds <= 0:
+        return "预计时间已到，待调度"
+    return f"预计 {fmt_dur(seconds)} 后启动"
+
+
 def node_resources(nodes: list) -> dict:
     """汇总所有节点的 GPU / CPU / 内存 资源"""
     gpu_tot, gpu_used = {}, {}
@@ -88,7 +108,7 @@ def node_resources(nodes: list) -> dict:
 
 
 def job_groups(jobs: list) -> dict:
-    """按 GPU 型号分组活跃作业 -> {型号: [(id, 状态, 用户, 名称, 剩余, 数量, 依赖)]}"""
+    """按 GPU 型号分组活跃作业 -> {型号: [(id, 状态, 用户, 名称, 剩余, 数量, 等待信息)]}"""
     groups = {}
     now = int(time.time())
     for j in jobs:
@@ -103,12 +123,12 @@ def job_groups(jobs: list) -> dict:
         counts = {("gpu(通配)" if short_name(k) == "gpu" else short_name(k)): v
                   for k, v in gres.items() if v > 0}
         for g, cnt in (counts.items() or [("无 GPU", 0)]):
-            groups.setdefault(g, []).append(base + (cnt, j.get("dependency") or "-",))
+            groups.setdefault(g, []).append(base + (cnt, fmt_start_wait(j.get("start_time"), now) or j.get("dependency") or "-",))
     return groups
 
 
 def print_queues(groups: dict) -> None:
-    print("作业申请（张数=该型号显卡数, 末列：运行中显示剩余时间，等待中显示依赖）:")
+    print("作业申请（张数=该型号显卡数, 末列：运行中显示剩余时间，等待中优先显示距预计启动的时长，否则显示依赖）:")
     if not groups:
         print("  (无)")
         return
